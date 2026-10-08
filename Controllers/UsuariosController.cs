@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PeliculasAPI.DTOs;
@@ -48,6 +49,7 @@ namespace PeliculasAPI.Controllers
 
 		[HttpPost("registrar")]
 		[AllowAnonymous]
+		[EnableRateLimiting("registro")]
 		public async Task<ActionResult<RespuestaAutenticacionDTO>> Registrar(CredencialesUsuarioDTO credencialesDTO)
 		{
 			var usuario = new IdentityUser
@@ -70,6 +72,7 @@ namespace PeliculasAPI.Controllers
 
 		[HttpPost("login")]
 		[AllowAnonymous]
+		[EnableRateLimiting("login")]
 		public async Task<ActionResult<RespuestaAutenticacionDTO>> Login(CredencialesUsuarioDTO credencialesDTO)
 		{
 			var usuario = await _userManager.FindByEmailAsync(credencialesDTO.Email);

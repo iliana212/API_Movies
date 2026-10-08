@@ -10,6 +10,8 @@ using PeliculasAPI;
 using PeliculasAPI.Servicios;
 using PeliculasAPI.Utilidades;
 using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -115,7 +117,47 @@ builder.Services.AddSwaggerGen(opc =>
 	{
 		[new OpenApiSecuritySchemeReference("bearer", document)] = []
 	}); 
-	
+});
+
+builder.Services.AddLogging();
+
+builder.Services.AddRateLimiter(opciones =>
+{
+	opciones.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+	// Login: 5 intentos por minuto por IP
+	opciones.AddPolicy("login", httpContext =>
+		RateLimitPartition.GetFixedWindowLimiter(
+			partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "desconocida",
+			factory: _ => new FixedWindowRateLimiterOptions
+			{
+				PermitLimit = 5,
+				Window = TimeSpan.FromMinutes(1),
+				QueueLimit = 0
+			}));
+
+	// Registro: 3 cuentas cada 10 minutos por IP
+	opciones.AddPolicy("registro", httpContext =>
+		RateLimitPartition.GetFixedWindowLimiter(
+			partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "desconocida",
+			factory: _ => new FixedWindowRateLimiterOptions
+			{
+				PermitLimit = 3,
+				Window = TimeSpan.FromMinutes(10),
+				QueueLimit = 0
+			}));
+
+	opciones.OnRejected = async (contexto, cancelacion) =>
+	{
+		if (contexto.Lease.TryGetMetadata(MetadataName.RetryAfter, out var espera))
+		{
+			contexto.HttpContext.Response.Headers.RetryAfter = ((int)espera.TotalSeconds).ToString();
+		}
+
+		contexto.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+		await contexto.HttpContext.Response.WriteAsJsonAsync(
+			new { mensaje = "Demasiados intentos. Intenta de nuevo más tarde." }, cancelacion);
+	};
 });
 
 var app = builder.Build();
@@ -130,12 +172,12 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseCors();
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
-
 app.UseOutputCache();
+app.MapControllers();
 
 app.Run();
