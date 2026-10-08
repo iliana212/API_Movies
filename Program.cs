@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -163,6 +164,9 @@ builder.Services.AddRateLimiter(opciones =>
 	};
 });
 
+builder.Services.AddHealthChecks()
+	.AddDbContextCheck<ApplicationDBContext>("PeliculasAPI", tags: ["ready"]);
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -183,5 +187,25 @@ app.UseAuthorization();
 
 app.UseOutputCache();
 app.MapControllers();
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+	Predicate = check => check.Tags.Contains("ready"),
+	ResponseWriter = async (contexto, reporte) =>
+	{
+		contexto.Response.ContentType = "application/json";
+		await contexto.Response.WriteAsJsonAsync(new
+		{
+			estado = reporte.Status.ToString(),
+			checks = reporte.Entries.Select(e => new
+			{
+				nombre = e.Key,
+				estado = e.Value.Status.ToString(),
+				duracionMs = e.Value.Duration.TotalMilliseconds
+			})
+		});
+	}
+});
 
 app.Run();
