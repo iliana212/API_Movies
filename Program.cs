@@ -12,6 +12,7 @@ using PeliculasAPI.Utilidades;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -120,6 +121,8 @@ builder.Services.AddSwaggerGen(opc =>
 });
 
 builder.Services.AddLogging();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 builder.Services.AddRateLimiter(opciones =>
 {
@@ -156,13 +159,14 @@ builder.Services.AddRateLimiter(opciones =>
 
 		contexto.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
 		await contexto.HttpContext.Response.WriteAsJsonAsync(
-			new { mensaje = "Demasiados intentos. Intenta de nuevo más tarde." }, cancelacion);
+			new ProblemDetails { Status = 429, Title = "Demasiados intentos", Instance=contexto.HttpContext.Request.Path }, cancelacion);
 	};
 });
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+app.UseExceptionHandler();
 
 app.UseSwagger();
 app.UseSwaggerUI(opc => { opc.EnablePersistAuthorization(); });
