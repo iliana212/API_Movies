@@ -1,5 +1,8 @@
 using AutoMapper;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
@@ -9,15 +12,27 @@ using NetTopologySuite.Geometries;
 using PeliculasAPI;
 using PeliculasAPI.Servicios;
 using PeliculasAPI.Utilidades;
+using Serilog;
+using Serilog.Context;
+using Serilog.Events;
 using System.Text;
 using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+builder.Host.UseSerilog((contexto, servicios, configuracion) => configuracion
+	.ReadFrom.Configuration(contexto.Configuration)
+	.ReadFrom.Services(servicios)
+	.Enrich.FromLogContext()
+	.WriteTo.Console(outputTemplate:
+		"[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
+	.WriteTo.File("logs/api-.log", 
+		outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}",
+		rollingInterval: RollingInterval.Day, retainedFileCountLimit: 14)
+);
 
 builder.Services.AddControllers();
 
@@ -170,6 +185,21 @@ builder.Services.AddHealthChecks()
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+app.UseSerilogRequestLogging(opciones =>
+{
+	opciones.GetLevel = (contexto, _, _) =>
+		contexto.Request.Path.StartsWithSegments("/swagger")
+			? LogEventLevel.Verbose
+			: LogEventLevel.Information;
+
+	opciones.EnrichDiagnosticContext = (diagnostico, httpContext) =>
+	{
+		diagnostico.Set("Usuario", httpContext.User.Identity?.IsAuthenticated == true
+			? httpContext.User.FindFirst("email")?.Value
+			: "anonimo");
+	};
+});
+
 app.UseExceptionHandler();
 
 app.UseSwagger();

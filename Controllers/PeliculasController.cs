@@ -61,7 +61,8 @@ namespace PeliculasAPI.Controllers
 		[AllowAnonymous]
 		public async Task<ActionResult<PeliculaDetallesDTO>> Get(int id)
 		{
-			var pelicula = await _context.Peliculas.ProjectTo<PeliculaDetallesDTO>(_mapper.ConfigurationProvider)
+			var pelicula = await _context.Peliculas.AsSplitQuery()
+				.ProjectTo<PeliculaDetallesDTO>(_mapper.ConfigurationProvider)
 				.FirstOrDefaultAsync(p => p.Id == id);
 
 			if (pelicula is null)
@@ -163,7 +164,8 @@ namespace PeliculasAPI.Controllers
 		[HttpGet("PutGet/{id:int}")]
 		public async Task<ActionResult<PeliculasPutGetDTO>> PutGet(int id)
 		{
-			var pelicula = await _context.Peliculas.ProjectTo<PeliculaDetallesDTO>(_mapper.ConfigurationProvider)
+			var pelicula = await _context.Peliculas.AsSplitQuery()
+				.ProjectTo<PeliculaDetallesDTO>(_mapper.ConfigurationProvider)
 				.FirstOrDefaultAsync(x => x.Id == id);
 
 			if (pelicula is null)
