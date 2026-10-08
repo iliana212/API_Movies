@@ -7,7 +7,7 @@ REST API built with **ASP.NET Core (.NET 10)** and **Entity Framework Core** to 
 - [React_Movies](https://github.com/iliana212/React_Movies) — React 19 + TypeScript
 - [Angular_Movies](https://github.com/iliana212/Angular_Movies) — Angular 21
 
-![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet) ![SQL Server](https://img.shields.io/badge/SQL%20Server-EF%20Core-CC2927?logo=microsoftsqlserver&logoColor=white) ![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens) ![Swagger](https://img.shields.io/badge/Docs-Swagger-85EA2D?logo=swagger&logoColor=black)
+![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet) ![SQL Server](https://img.shields.io/badge/SQL%20Server-EF%20Core-CC2927?logo=microsoftsqlserver&logoColor=white) ![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens) ![Swagger](https://img.shields.io/badge/Docs-Swagger-85EA2D?logo=swagger&logoColor=black) ![Serilog](https://img.shields.io/badge/Logs-Serilog-4B5563)
 
 *Route, class and entity names (`generos`, `peliculas`, `cines`, `esadmin`…) are kept as-is from the actual codebase — they are Spanish for genres, movies, cinemas and "is admin".*
 
@@ -22,6 +22,7 @@ REST API built with **ASP.NET Core (.NET 10)** and **Entity Framework Core** to 
 - **Geospatial data** with NetTopologySuite for cinema locations
 - Image uploads (movie posters and actor photos) with **local** or **Azure Blob Storage**, swappable through an interface
 - Movie filtering, pagination, tag-based **output caching**, and **Swagger / OpenAPI** documentation
+- **Production-minded:** rate limiting on authentication, global error handling with `ProblemDetails`, health checks, and structured logging with Serilog
 
 ## Architecture
 
@@ -29,8 +30,10 @@ REST API built with **ASP.NET Core (.NET 10)** and **Entity Framework Core** to 
 graph LR
     React["React_Movies<br/><sub>React 19 · Vite</sub>"] --> API
     Angular["Angular_Movies<br/><sub>Angular 21</sub>"] --> API
-    API["Movies API<br/><sub>ASP.NET Core · JWT</sub>"] --> DB[("SQL Server<br/><sub>EF Core · NetTopologySuite</sub>")]
+    API["Movies API<br/><sub>ASP.NET Core · JWT · Rate Limiting</sub>"] --> DB[("SQL Server<br/><sub>EF Core · NetTopologySuite</sub>")]
     API --> Storage[("Images<br/><sub>wwwroot / Azure Blob</sub>")]
+    API -. "logs" .-> Logs[("Logs<br/><sub>Serilog · console + file</sub>")]
+    Monitor{{"Monitoring / orchestrator"}} -. "/health/live · /health/ready" .-> API
 ```
 
 ## Main endpoints
@@ -43,13 +46,23 @@ graph LR
 | Movies (read) | `GET api/peliculas/landing` · `GET api/peliculas/{id}` · `GET api/peliculas/filtrar` | Public |
 | Movies (management) | `POST` / `PUT` / `DELETE api/peliculas` · `GET PostGet` · `GET PutGet/{id}` | Admin |
 | Ratings | `POST api/rating` | Authenticated user |
-| Users | `POST api/usuarios/registrar` · `POST api/usuarios/login` | Public |
+| Users | `POST api/usuarios/registrar` · `POST api/usuarios/login` (rate limited) | Public |
 | User administration | `GET ListadoUsuarios` · `POST HacerAdmin` · `POST RemoverAdmin` | Admin |
+| Health | `GET /health/live` · `GET /health/ready` | Public |
 
 - **Landing:** movies currently in theaters and upcoming releases.
 - **Details:** include the average rating and the authenticated user's own vote.
 - **Filter:** by title, genre, in theaters, and upcoming releases, with pagination (maximum 50 records per page).
 - The total record count is returned in the `cantidad-total-registros` response header.
+
+## Production features
+
+Beyond the endpoints, these are the pieces that make the API more robust and easier to operate:
+
+- **Rate limiting on authentication** — `POST api/usuarios/login` allows 5 attempts per minute per IP, and `POST api/usuarios/registrar` allows 3 every 10 minutes (fixed window). When exceeded, the API responds with `429` and a `Retry-After` header. This reduces the risk of brute-force attacks and mass account creation.
+- **Global exception handling** — a centralized `IExceptionHandler` returns every error in the standard `ProblemDetails` format: unique-constraint violations → `409`, invalid references (foreign key) → `400`, concurrency conflicts → `409`, and unexpected errors → `500` with a generic message (the real detail is only shown in Development). Every response includes a `traceId` to correlate it with the logs.
+- **Health checks** — `/health/live` (liveness: the process is alive, no dependencies queried) and `/health/ready` (readiness: verifies the SQL Server connection through EF Core). Both return JSON with the status of each check, without exposing exception messages. This is the pattern Docker and Kubernetes expect.
+- **Structured logging with Serilog** — output to the console and to a daily rolling file (`logs/api-.log`, 14 days retained). Each request logs a summary with its `RequestId` and the authenticated user; that `RequestId` matches the `traceId` in error responses, so an error reported by a client can be traced back to its log line. Levels are configured in the `Serilog` section of `appsettings.json`.
 
 ## Tech stack
 
@@ -58,7 +71,9 @@ graph LR
 | Framework | ASP.NET Core Web API, .NET 10 |
 | Data access | Entity Framework Core 10, SQL Server, code-first migrations |
 | Spatial data | NetTopologySuite (SRID 4326) |
-| Security | ASP.NET Core Identity, JWT Bearer |
+| Security | ASP.NET Core Identity, JWT Bearer, Rate Limiting |
+| Error handling | `IExceptionHandler` + `ProblemDetails` |
+| Observability | Serilog (console + file), ASP.NET Core Health Checks |
 | Mapping | AutoMapper |
 | Storage | Local file system / Azure Blob Storage |
 | Docs | Swashbuckle (Swagger UI) |
@@ -71,8 +86,9 @@ graph LR
 ├── Entidades/        # EF Core entities
 ├── Migrations/       # Database migrations
 ├── Servicios/        # Services (users, file storage)
-├── Utilidades/       # AutoMapper profiles, cache policy, extensions
+├── Utilidades/       # AutoMapper profiles, cache policy, global exception handler, extensions
 ├── Validaciones/     # Custom validation attributes
+├── logs/             # Log files generated by Serilog (not versioned)
 ├── wwwroot/          # Static files / uploaded images
 ├── ApplicationDBContext.cs
 └── Program.cs        # Service registration and HTTP pipeline
@@ -126,9 +142,18 @@ dotnet ef database update
 dotnet run --launch-profile https
 ```
 
-Swagger UI will be available at `https://localhost:7263/swagger`.
+Swagger UI will be available at `https://localhost:7263/swagger`. Logs are written to the console and to the `logs/` folder.
 
-### 5. Create the first administrator
+### 5. Check that the API is healthy
+
+```bash
+curl -k https://localhost:7263/health/live
+curl -k https://localhost:7263/health/ready
+```
+
+`live` returns `200` as long as the process is alive; `ready` returns `200` if the database is reachable and `503` if it is not.
+
+### 6. Create the first administrator
 
 Management endpoints require the `esadmin` claim, and only an administrator can grant it. For the very first user:
 
