@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Asp.Versioning;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,8 @@ using PeliculasAPI.Servicios;
 namespace PeliculasAPI.Controllers
 {
 	[ApiController]
-	[Route("api/rating")]
+	[ApiVersion("1.0")]
+	[Route("api/v{version:apiVersion}/rating")]	
 	public class RatingsController : ControllerBase
 	{
 		private readonly ApplicationDBContext _context;

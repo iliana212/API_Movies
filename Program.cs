@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using AutoMapper;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
@@ -181,6 +182,20 @@ builder.Services.AddRateLimiter(opciones =>
 
 builder.Services.AddHealthChecks()
 	.AddDbContextCheck<ApplicationDBContext>("PeliculasAPI", tags: ["ready"]);
+
+builder.Services.AddApiVersioning(opciones =>
+{
+	opciones.DefaultApiVersion = new ApiVersion(1, 0);
+	opciones.AssumeDefaultVersionWhenUnspecified = true;
+	opciones.ReportApiVersions = true;
+	opciones.ApiVersionReader = new UrlSegmentApiVersionReader();
+})
+.AddMvc()
+.AddApiExplorer(opciones =>
+{
+	opciones.GroupNameFormat = "'v'VVV";
+	opciones.SubstituteApiVersionInUrl = true;
+});
 
 var app = builder.Build();
 

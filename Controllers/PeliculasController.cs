@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using Asp.Versioning;
+using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -11,9 +12,10 @@ using PeliculasAPI.Servicios;
 using PeliculasAPI.Utilidades;
 
 namespace PeliculasAPI.Controllers
-{
-	[Route("api/peliculas")]
+{	
 	[ApiController]
+	[ApiVersion("1.0")]
+	[Route("api/v{version:apiVersion}/peliculas")]
 	[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "esadmin")]
 	public class PeliculasController : CustomBaseController
 	{
