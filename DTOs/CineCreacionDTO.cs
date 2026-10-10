@@ -7,9 +7,9 @@ namespace PeliculasAPI.DTOs
 		[Required]
 		[StringLength(75)]
 		public required string Nombre { get; set; }
-		[Range(-90,90)]
+		[Range(-90.0,90.0)]
 		public double Latitud { get; set; }
-		[Range(-180,180)]
+		[Range(-180.0,180.0)]
 		public double Longitud { get; set; }
 	}
 }
