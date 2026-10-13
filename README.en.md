@@ -19,7 +19,7 @@ REST API built with **ASP.NET Core (.NET 10)** and **Entity Framework Core** to 
 
 | HealthChecks | Serilog |
 |---|---|
-| ![HealthCheck](docs/healthchecks.png) | ![Serilog](docs/serilog.png) |
+| ![HealthCheck](docs/healthchecks.png) | ![Serilog](docs/Serilog.png) |
 
 ## At a glance
 
