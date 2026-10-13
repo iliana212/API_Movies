@@ -11,7 +11,13 @@ API REST construida con **ASP.NET Core (.NET 10)** y **Entity Framework Core** p
 
 > **Estado:** en desarrollo activo.
 
-![Swagger UI](docs/swagger.png) ![Swagger UI](docs/swagger_2.png) ![Swagger UI](docs/swagger_3.png)
+| Swagger UI | Jwt |
+|---|---|
+| ![Swagger UI](docs/swagger.png) | ![Jwt](docs/swagger_3.png) |
+
+| HealthChecks | Serilog |
+|---|---|
+| ![HealthCheck](docs/healthchecks.png) | ![Serilog](docs/serilog.png) |
 
 ## En un vistazo
 
