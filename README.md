@@ -7,16 +7,16 @@ API REST construida con **ASP.NET Core (.NET 10)** y **Entity Framework Core** p
 - [React_Movies](https://github.com/iliana212/React_Movies) — React 19 + TypeScript
 - [Angular_Movies](https://github.com/iliana212/Angular_Movies) — Angular 21
 
-![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet) ![SQL Server](https://img.shields.io/badge/SQL%20Server-EF%20Core-CC2927?logo=microsoftsqlserver&logoColor=white) ![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens) ![Swagger](https://img.shields.io/badge/Docs-Swagger-85EA2D?logo=swagger&logoColor=black) ![Serilog](https://img.shields.io/badge/Logs-Serilog-4B5563) ![xUnit](https://img.shields.io/badge/Tests-xUnit-5E2D79) ![Docker](https://img.shields.io/badge/Testcontainers-Docker-2496ED?logo=docker&logoColor=white)
+![CI](https://github.com/iliana212/API_Movies/actions/workflows/ci.yml/badge.svg) ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet) ![SQL Server](https://img.shields.io/badge/SQL%20Server-EF%20Core-CC2927?logo=microsoftsqlserver&logoColor=white) ![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens) ![Swagger](https://img.shields.io/badge/Docs-Swagger-85EA2D?logo=swagger&logoColor=black) ![Serilog](https://img.shields.io/badge/Logs-Serilog-4B5563) ![xUnit](https://img.shields.io/badge/Tests-xUnit-5E2D79) ![Docker](https://img.shields.io/badge/Testcontainers-Docker-2496ED?logo=docker&logoColor=white)
 
 > **Estado:** en desarrollo activo.
 
 | Swagger UI | Jwt |
-|---|---|
+| --- | --- |
 | ![Swagger UI](docs/swagger.png) | ![Jwt](docs/swagger_3.png) |
 
 | HealthChecks | Serilog |
-|---|---|
+| --- | --- |
 | ![HealthCheck](docs/healthchecks.png) | ![Serilog](docs/Serilog.png) |
 
 ## En un vistazo
@@ -28,6 +28,7 @@ API REST construida con **ASP.NET Core (.NET 10)** y **Entity Framework Core** p
 - Filtrado de películas, paginación, **caché de salida** con tags y documentación **Swagger / OpenAPI**
 - **Preparada para producción:** versionado de la API, rate limiting en autenticación, manejo global de errores con `ProblemDetails`, health checks y logging estructurado con Serilog
 - **Probada:** pruebas unitarias y de integración con xUnit, ejecutadas contra un SQL Server real en contenedor
+- **Integración continua:** GitHub Actions compila y ejecuta todas las pruebas en cada push
 
 ## Arquitectura
 
@@ -98,6 +99,17 @@ dotnet test --filter "FullyQualifiedName~PeliculasAPI.Tests.Unit"          # sol
 dotnet test --filter "FullyQualifiedName~PeliculasAPI.Tests.Integration"   # solo integración
 ```
 
+### Integración continua
+
+Cada push dispara un workflow de **GitHub Actions** (`.github/workflows/ci.yml`) que:
+
+1. Compila el proyecto en Release con .NET 10.
+2. Ejecuta primero las pruebas unitarias (rápidas y sin Docker), para fallar pronto.
+3. Ejecuta después las pruebas de integración con SQL Server en contenedor (los runners de GitHub incluyen Docker).
+4. Guarda los resultados (`.trx`) como artefacto, incluso si alguna prueba falla.
+
+No necesita secretos: la configuración de la API la inyectan las propias pruebas. Si llega un push nuevo a la misma rama mientras hay una ejecución en curso, la anterior se cancela.
+
 ## Tecnologías
 
 | Área | Tecnología |
@@ -110,6 +122,7 @@ dotnet test --filter "FullyQualifiedName~PeliculasAPI.Tests.Integration"   # sol
 | Manejo de errores | `IExceptionHandler` + `ProblemDetails` |
 | Observabilidad | Serilog (consola + archivo), ASP.NET Core Health Checks |
 | Pruebas | xUnit, `WebApplicationFactory`, Testcontainers (SQL Server), NSubstitute |
+| Integración continua | GitHub Actions |
 | Mapeo | AutoMapper |
 | Almacenamiento | Sistema de archivos local / Azure Blob Storage |
 | Documentación | Swashbuckle (Swagger UI) |
@@ -117,6 +130,7 @@ dotnet test --filter "FullyQualifiedName~PeliculasAPI.Tests.Integration"   # sol
 ## Estructura del proyecto
 
 ```
+├── .github/workflows/  # Integración continua (GitHub Actions)
 ├── Controllers/        # Endpoints de la API
 ├── DTOs/               # Objetos de transferencia de datos
 ├── Entidades/          # Entidades de EF Core

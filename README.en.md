@@ -7,18 +7,18 @@ REST API built with **ASP.NET Core (.NET 10)** and **Entity Framework Core** to 
 - [React_Movies](https://github.com/iliana212/React_Movies) — React 19 + TypeScript
 - [Angular_Movies](https://github.com/iliana212/Angular_Movies) — Angular 21
 
-![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet) ![SQL Server](https://img.shields.io/badge/SQL%20Server-EF%20Core-CC2927?logo=microsoftsqlserver&logoColor=white) ![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens) ![Swagger](https://img.shields.io/badge/Docs-Swagger-85EA2D?logo=swagger&logoColor=black) ![Serilog](https://img.shields.io/badge/Logs-Serilog-4B5563) ![xUnit](https://img.shields.io/badge/Tests-xUnit-5E2D79) ![Docker](https://img.shields.io/badge/Testcontainers-Docker-2496ED?logo=docker&logoColor=white)
+![CI](https://github.com/iliana212/API_Movies/actions/workflows/ci.yml/badge.svg) ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet) ![SQL Server](https://img.shields.io/badge/SQL%20Server-EF%20Core-CC2927?logo=microsoftsqlserver&logoColor=white) ![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens) ![Swagger](https://img.shields.io/badge/Docs-Swagger-85EA2D?logo=swagger&logoColor=black) ![Serilog](https://img.shields.io/badge/Logs-Serilog-4B5563) ![xUnit](https://img.shields.io/badge/Tests-xUnit-5E2D79) ![Docker](https://img.shields.io/badge/Testcontainers-Docker-2496ED?logo=docker&logoColor=white)
 
 *Route, class and entity names (`generos`, `peliculas`, `cines`, `esadmin`…) are kept as-is from the actual codebase — they are Spanish for genres, movies, cinemas and "is admin".*
 
 > **Status:** actively in development.
 
 | Swagger UI | Jwt |
-|---|---|
+| --- | --- |
 | ![Swagger UI](docs/swagger.png) | ![Jwt](docs/swagger_3.png) |
 
 | HealthChecks | Serilog |
-|---|---|
+| --- | --- |
 | ![HealthCheck](docs/healthchecks.png) | ![Serilog](docs/Serilog.png) |
 
 ## At a glance
@@ -30,6 +30,7 @@ REST API built with **ASP.NET Core (.NET 10)** and **Entity Framework Core** to 
 - Movie filtering, pagination, tag-based **output caching**, and **Swagger / OpenAPI** documentation
 - **Production-minded:** API versioning, rate limiting on authentication, global error handling with `ProblemDetails`, health checks, and structured logging with Serilog
 - **Tested:** unit and integration tests with xUnit, run against a real SQL Server in a container
+- **Continuous integration:** GitHub Actions builds and runs the whole test suite on every push
 
 ## Architecture
 
@@ -100,6 +101,17 @@ dotnet test --filter "FullyQualifiedName~PeliculasAPI.Tests.Unit"          # uni
 dotnet test --filter "FullyQualifiedName~PeliculasAPI.Tests.Integration"   # integration tests only
 ```
 
+### Continuous integration
+
+Every push triggers a **GitHub Actions** workflow (`.github/workflows/ci.yml`) that:
+
+1. Builds the project in Release with .NET 10.
+2. Runs the unit tests first (fast, no Docker), to fail early.
+3. Then runs the integration tests with SQL Server in a container (GitHub runners include Docker).
+4. Saves the results (`.trx`) as an artifact, even if a test fails.
+
+It needs no secrets: the API configuration is injected by the tests themselves. If a new push arrives on the same branch while a run is in progress, the previous run is cancelled.
+
 ## Tech stack
 
 | Area | Technology |
@@ -112,6 +124,7 @@ dotnet test --filter "FullyQualifiedName~PeliculasAPI.Tests.Integration"   # int
 | Error handling | `IExceptionHandler` + `ProblemDetails` |
 | Observability | Serilog (console + file), ASP.NET Core Health Checks |
 | Testing | xUnit, `WebApplicationFactory`, Testcontainers (SQL Server), NSubstitute |
+| Continuous integration | GitHub Actions |
 | Mapping | AutoMapper |
 | Storage | Local file system / Azure Blob Storage |
 | Docs | Swashbuckle (Swagger UI) |
@@ -119,6 +132,7 @@ dotnet test --filter "FullyQualifiedName~PeliculasAPI.Tests.Integration"   # int
 ## Project structure
 
 ```
+├── .github/workflows/  # Continuous integration (GitHub Actions)
 ├── Controllers/        # API endpoints
 ├── DTOs/               # Data transfer objects
 ├── Entidades/          # EF Core entities
